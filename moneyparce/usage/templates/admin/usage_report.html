@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>User Usage Report</h1>
+
+  <form method="get" style="margin-bottom: 20px;">
+    <label>Start Date:</label>
+    <input type="date" name="start" value="{{ start }}">
+    <label>End Date:</label>
+    <input type="date" name="end" value="{{ end }}">
+    <button type="submit">Filter</button>
+  </form>
+
+  <div>
+    {{ chart|safe }}
+  </div>
+{% endblock %}
