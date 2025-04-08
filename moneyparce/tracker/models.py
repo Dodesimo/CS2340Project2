@@ -9,3 +9,10 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.description} - ${self.amount} on {self.date}"
+
+# For custom admin report access
+class TransactionReportProxy(User):
+    class Meta:
+        proxy = True
+        verbose_name = "💳 Transaction Report"
+        verbose_name_plural = "💳 Transaction Report"
