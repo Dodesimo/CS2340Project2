@@ -1,14 +1,29 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from .models import Transaction, TransactionSummary
-from .forms import TransactionForm
+from .models import Transaction, TransactionSummary, Budget
+from .forms import TransactionForm, BudgetForm
 from .utils import generate_daily_transaction_summary
 from datetime import datetime, timedelta
 from django.template.loader import get_template
 from django.http import HttpResponse
 from xhtml2pdf import pisa
 import io
+
+
+@login_required
+def add_budget_view(request):
+    if request.method == 'POST':
+        form = BudgetForm(request.POST)
+        if form.is_valid():
+            budget = form.save(commit=False)
+            budget.user = request.user
+            budget.save()
+
+            return redirect('/')
+    else:
+        form = BudgetForm()
+    return render(request, 'tracker/add_budget.html', {'form': form})
 
 @login_required
 def dashboard_view(request):
@@ -33,12 +48,17 @@ def dashboard_view(request):
         user=request.user,
         date__gte=today - timedelta(days=7)
     ).order_by('-date')
-    
+
+    all_budgets = Budget.objects.filter(user=request.user).order_by('-month')
+
+
+
     context = {
         'transactions': all_transactions,
         'today_transactions': today_transactions,
         'today_summary': summary,
         'recent_summaries': recent_summaries,
+        'budgets': all_budgets,
     }
     
     return render(request, 'tracker/dashboard.html', context)

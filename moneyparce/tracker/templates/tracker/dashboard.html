@@ -55,6 +55,27 @@
     </div>
 </div>
 
+<div class="container">
+    <h2>Your Budgets</h2>
+
+    <div class="budgets-list">
+        <h3>All Budgets</h3>
+        <a href="{% url 'add_budget' %}" class="btn btn-primary mb-3">Add Budgets</a>
+
+        <ul class="list-group">
+            {% for budget in budgets %}
+                <li class="list-group-item">
+                    <strong>Month {{ budget.month }}</strong> -
+                    ${{ budget.monthly_amount }}
+                </li>
+            {% empty %}
+                <li class="list-group-item">No budget recorded.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+
 <style>
     .container {
         max-width: 800px;
