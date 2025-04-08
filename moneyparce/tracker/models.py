@@ -10,7 +10,19 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.user.username}: {self.description} - ${self.amount} on {self.date}"
 
-# For custom admin report access
+class TransactionSummary(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateField()
+    summary_text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('user', 'date')
+        ordering = ['-date']
+    
+    def __str__(self):
+        return f"{self.user.username}'s summary for {self.date}"
+
 class TransactionReportProxy(User):
     class Meta:
         proxy = True

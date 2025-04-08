@@ -19,7 +19,6 @@ class TransactionReportAdmin(admin.ModelAdmin):
         if user_id:
             transactions = transactions.filter(user__id=user_id)
 
-        # Total amount grouped by user
         summary = transactions.values('user__username') \
                               .annotate(total=Sum('amount')) \
                               .order_by('-total')
