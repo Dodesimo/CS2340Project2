@@ -1,0 +1,30 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MoneyParce</title>
+    <link rel="stylesheet" href="{% static 'tracker/style.css' %}">
+</head>
+<body>
+    <header>
+        <h1><a href="/">MoneyParce</a></h1>
+        {% if user.is_authenticated %}
+            <nav>
+                <a href="{% url 'add_transaction' %}">Add</a>
+                {% if user.is_authenticated %}
+                    <p>Welcome, {{ user.username }} <a href="{% url 'logout' %}">Logout</a></p>
+                {% endif %}
+            </nav>
+        {% else %}
+            <nav>
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'register' %}">Register</a>
+            </nav>
+        {% endif %}
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
