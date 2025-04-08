@@ -35,6 +35,9 @@
     </div>
     
     <div class="transactions-list">
+        <a href="{% url 'generate_pdf' %}" class="btn btn-outline-primary mb-3">
+            📄 Download PDF Report
+        </a>
         <h3>All Transactions</h3>
         <a href="{% url 'add_transaction' %}" class="btn btn-primary mb-3">Add Transaction</a>
         

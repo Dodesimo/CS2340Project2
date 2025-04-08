@@ -5,6 +5,10 @@ from .models import Transaction, TransactionSummary
 from .forms import TransactionForm
 from .utils import generate_daily_transaction_summary
 from datetime import datetime, timedelta
+from django.template.loader import get_template
+from django.http import HttpResponse
+from xhtml2pdf import pisa
+import io
 
 @login_required
 def dashboard_view(request):
@@ -90,3 +94,22 @@ def regenerate_summary_view(request, date_str):
         return redirect('/')
     except ValueError:
         return redirect('/')
+    
+@login_required
+def generate_pdf(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    total_spent = sum(t.amount for t in transactions)
+
+    template = get_template("tracker/pdf_template.html")
+    html = template.render({
+        "transactions": transactions,
+        "total_spent": total_spent,
+        "request": request,  # Include this so you can still access request.user in the template
+    })
+
+    result = io.BytesIO()
+    pisa.CreatePDF(io.BytesIO(html.encode("UTF-8")), dest=result)
+
+    response = HttpResponse(result.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="spending_report.pdf"'
+    return response
