@@ -8,4 +8,5 @@ urlpatterns = [
     path('register/', register_view, name='register'),
     path('accounts/login/', login_view, name='login'),
     path('accounts/logout/', logout_view, name='logout'),
+    path('chatbot/', include('chatbot.urls')),
 ]

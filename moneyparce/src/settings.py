@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "usage.apps.UsageConfig",
     "tracker",
     "accounts",
+    "chatbot",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,267 @@
+{% extends 'tracker/base.html' %}
+{% block title %}Dashboard - Money Parce{% endblock %}
+
+{% block content %}
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0 auto;
+
+            background-color: #f7f9fc;
+            color: #333;
+            line-height: 1.6;
+        }
+        .chat-container {
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .message {
+            padding: 12px 18px;
+            margin-bottom: 15px;
+            border-radius: 20px;
+            max-width: 75%;
+            word-wrap: break-word;
+            position: relative;
+            font-size: 15px;
+        }
+        .user-message {
+            background-color: #4285f4;
+            color: white;
+            margin-left: auto;
+            margin-right: 10px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+        }
+        .ai-message {
+            background-color: #f1f3f4;
+            color: #202124;
+            margin-right: auto;
+            margin-left: 10px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+        }
+        .input-container {
+            display: flex;
+            margin-top: 15px;
+        }
+        #message-input {
+            flex-grow: 1;
+            padding: 14px 20px;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            margin-right: 10px;
+            outline: none;
+            font-size: 15px;
+            transition: border 0.3s ease;
+        }
+        #message-input:focus {
+            border-color: #4285f4;
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
+        button {
+            padding: 12px 24px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        h1 {
+            color: #4285f4;
+            margin: 0;
+            font-size: 28px;
+        }
+        .typing-indicator {
+            color: #666;
+            font-style: italic;
+            margin-top: 10px;
+            display: none;
+            padding-left: 20px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            border-left: 3px solid #4285f4;
+            margin: 10px 0;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f1f3f4;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .error-message {
+            background-color: #fdeded;
+            color: #b71c1c;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MoneyParce Chatbot</h1>
+        <a href="{% url 'chatbot:new_conversation' %}"><button>New Conversation</button></a>
+    </div>
+
+    <div class="chat-container" id="chat-container">
+        {% for message in messages %}
+            <div class="message {% if message.is_user %}user-message{% else %}ai-message{% endif %}">
+                {{ message.content|linebreaks }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <form id="chat-form">
+        {% csrf_token %}
+        <div class="input-container">
+            <input type="text" id="message-input" placeholder="Type your message..." required autofocus>
+            <button type="submit">Send</button>
+        </div>
+    </form>
+    <div class="typing-indicator" id="typing-indicator">Gemini is thinking...</div>
+    <a href="{% url 'tracker:dashboard' %}">Back to Dashboard</a>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chat-container');
+            const chatForm = document.getElementById('chat-form');
+            const messageInput = document.getElementById('message-input');
+            const typingIndicator = document.getElementById('typing-indicator');
+
+            // Scroll to bottom of chat
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // Function to safely escape HTML
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            // Function to format message with code blocks
+            function formatMessage(text) {
+                // Replace ```code``` blocks with proper HTML
+                let formatted = text.replace(/```([\s\S]*?)```/g, function(match, code) {
+                    return '<pre><code>' + escapeHtml(code) + '</code></pre>';
+                });
+
+                // Replace inline `code` with proper HTML
+                formatted = formatted.replace(/`([^`]+)`/g, function(match, code) {
+                    return '<code>' + escapeHtml(code) + '</code>';
+                });
+
+                // Replace newlines with <br> tags outside of pre blocks
+                let parts = formatted.split(/<pre>|<\/pre>/);
+                for (let i = 0; i < parts.length; i++) {
+                    if (i % 2 === 0) { // Outside <pre> tags
+                        parts[i] = parts[i].replace(/\n/g, '<br>');
+                    }
+                }
+                let formattedMessage = '';
+                for (let i = 0; i < parts.length; i++) {
+                    formattedMessage += (i % 2 === 0) ? parts[i] : `<pre>${parts[i]}</pre>`;
+                }
+                return formattedMessage;
+
+            }
+
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                // Display user message
+                const userMessageDiv = document.createElement('div');
+                userMessageDiv.className = 'message user-message';
+                userMessageDiv.textContent = message;
+                chatContainer.appendChild(userMessageDiv);
+
+                // Clear input
+                messageInput.value = '';
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                // Show typing indicator
+                typingIndicator.style.display = 'block';
+
+                // Send message to server
+                fetch('/chatbot/chat/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: new URLSearchParams({
+                        'message': message
+                    })
+                }).then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(text || `HTTP error! status: ${response.status}`);
+                        });
+                    }
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        return response.text().then(text => {
+                            throw new Error('Expected JSON, got: ' + text);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide typing indicator
+                    typingIndicator.style.display = 'none';
+
+                    // Display AI response
+                    const aiMessageDiv = document.createElement('div');
+                    aiMessageDiv.className = 'message ai-message';
+
+                    // Format the response with code blocks and line breaks
+                    aiMessageDiv.innerHTML = formatMessage(data.response);
+
+                    chatContainer.appendChild(aiMessageDiv);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    typingIndicator.style.display = 'none';
+
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'message error-message';
+                    errorDiv.innerHTML = 'Error: ' + error.message;
+                    chatContainer.appendChild(errorDiv);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                });
+            });
+        });
+    </script>
+{%  endblock %}
