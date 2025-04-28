@@ -1,0 +1,31 @@
+{% extends 'tracker/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Manage Categories</h2>
+
+    <div class="category-list">
+        <h3>Your Categories</h3>
+        {% if categories %}
+            <ul>
+                {% for category in categories %}
+                    <li>{{ category.name }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You haven't added any categories yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="form-container add-category-form">
+        <h3>Add New Category</h3>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Add Category</button>
+        </form>
+    </div>
+
+    <a href="{% url 'tracker:dashboard' %}">Back to Dashboard</a>
+</div>
+{% endblock %}

@@ -16,7 +16,7 @@
             {% if user.is_authenticated %}
                 <nav>
                     <span class="me-2">Welcome, {{ user.username }}</span>
-                    <a href="{% url 'add_transaction' %}" class="btn btn-outline-light me-2">Add Transaction</a>
+                    <a href="{% url 'tracker:add_transaction' %}" class="btn btn-outline-light me-2">Add Transaction</a> {# Corrected this line #}
                     <a href="{% url 'logout' %}" class="btn btn-outline-light">Logout</a>
                 </nav>
             {% else %}

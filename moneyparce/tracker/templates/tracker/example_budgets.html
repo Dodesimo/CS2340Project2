@@ -1,0 +1,47 @@
+{% extends 'tracker/base.html' %}
+
+{% block title %}Example Budgets - Money Parce{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Example Budgets</h2>
+    <p>Here are a few common budget structures to help you get started or refine your own budget.</p>
+    <hr>
+
+    {% for budget in example_budgets %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>{{ budget.name }}</h3>
+        </div>
+        <div class="card-body">
+            <p class="card-text">{{ budget.description }}</p>
+            <h5>Categories & Allocations:</h5>
+            <ul class="list-group list-group-flush">
+                {% for category in budget.categories %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                        {{ category.name }}
+                        {% if category.details %}
+                            <small class="text-muted d-block">{{ category.details }}</small>
+                        {% endif %}
+                    </span>
+                    <span class="badge bg-primary rounded-pill">${{ category.amount|floatformat:2 }}</span>
+                </li>
+                {% endfor %}
+                <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                    <span>Total</span>
+                    <span>${{ budget.total|floatformat:2 }}</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    {% empty %}
+    <p>No example budgets available at the moment.</p>
+    {% endfor %}
+
+    <div class="mt-4">
+        <a href="{% url 'tracker:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+        <a href="{% url 'tracker:add_budget' %}" class="btn btn-success">Create Your Own Budget</a>
+    </div>
+</div>
+{% endblock %}

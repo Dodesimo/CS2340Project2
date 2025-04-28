@@ -18,12 +18,14 @@
         <tr>
             <th>Date</th>
             <th>Description</th>
+            <th>Category</th> {# Add Category Header #}
             <th>Amount ($)</th>
         </tr>
         {% for t in transactions %}
         <tr>
             <td>{{ t.date|date:"F j, Y" }}</td>
             <td>{{ t.description }}</td>
+            <td>{{ t.category.name|default:"N/A" }}</td> {# Display category name, or N/A if none #}
             <td>{{ t.amount }}</td>
         </tr>
         {% endfor %}
