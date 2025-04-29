@@ -13,26 +13,119 @@
             <a href="{% url 'tracker:manage_categories' %}" class="btn btn-warning me-2">Manage Categories</a>
             <a href="{% url 'tracker:generate_pdf' %}" class="btn btn-secondary">Download Report (PDF)</a>
             <a href="{% url 'chatbot:index' %}" class="btn btn-dark">Go to Chatbot</a>
+        </div>
+    </div>
 
+    <!-- Budget Notifications -->
+    {% if budget_notifications %}
+        <div class="card mb-4">
+            <div class="card-header {% if budget_notifications.0.message|slice:':2' == '⚠️' %}bg-danger{% else %}bg-warning{% endif %} text-white">
+                <h3 class="mb-0">{% if budget_notifications.0.message|slice:':2' == '⚠️' %}⚠️ Budget Alerts{% else %}⚠️ Budget Warnings{% endif %}</h3>
+            </div>
+            <div class="card-body">
+                {% for notification in budget_notifications %}
+                    <div class="alert {% if notification.message|slice:':2' == '⚠️' %}alert-danger{% else %}alert-warning{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h4 class="alert-heading">
+                                    {% if notification.message|slice:':2' == '⚠️' %}
+                                        Budget Exceeded
+                                    {% else %}
+                                        Approaching Budget Limit
+                                    {% endif %}
+                                </h4>
+                                <p class="mb-0">{{ notification.message|linebreaks }}</p>
+                            </div>
+                            <form method="post" action="{% url 'tracker:mark_notification_read' notification.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm {% if notification.message|slice:':2' == '⚠️' %}btn-outline-danger{% else %}btn-outline-warning{% endif %}">
+                                    Mark as Read
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Daily Saving Tip -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">💡 Daily Saving Tip</h3>
+        </div>
+        <div class="card-body">
+            {% if saving_tip %}
+                <div class="saving-tip">
+                    <h4 class="text-primary">{{ saving_tip.category }}</h4>
+                    <p class="lead">{{ saving_tip.tip }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-{% if saving_tip.difficulty == 'easy' %}success{% elif saving_tip.difficulty == 'medium' %}warning{% else %}danger{% endif %}">
+                            {{ saving_tip.difficulty|title }}
+                        </span>
+                        <span class="text-muted">Potential Savings: {{ saving_tip.potential_savings }}</span>
+                    </div>
+                </div>
+            {% else %}
+                <p>No saving tips available at the moment.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Spending by Category Chart -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Spending by Category</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-container" style="position: relative; height:400px; width:100%">
+                <canvas id="categoryChart"></canvas>
+            </div>
         </div>
     </div>
 
     <!-- Budgets Section -->
     <div class="card mb-4">
-        <div class="budgets-list">
-            <h3>All Budgets</h3>
-            <a href="{% url 'tracker:add_budget' %}" class="btn btn-primary mb-3">Add Budgets</a> {# Changed from 'add_budget' #}
-
-            <ul class="list-group">
-                {% for budget in budgets %}
-                    <li class="list-group-item">
-                        <strong>Month {{ budget.month }}</strong> -
-                        ${{ budget.monthly_amount }}
-                    </li>
-                {% empty %}
-                    <li class="list-group-item">No budget recorded.</li>
-                {% endfor %}
-            </ul>
+        <div class="card-header">
+            <h3 class="mb-0">All Budgets</h3>
+        </div>
+        <div class="card-body">
+            <a href="{% url 'tracker:add_budget' %}" class="btn btn-primary mb-3">Add Budget</a>
+            
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Monthly Amount</th>
+                            <th>Current Spending</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for budget in budgets %}
+                            <tr>
+                                <td>{{ budget.month }}</td>
+                                <td>${{ budget.monthly_amount }}</td>
+                                <td>
+                                    ${{ budget.get_current_spending }}
+                                    ({{ budget.get_spending_percentage|floatformat:1 }}%)
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{% url 'tracker:edit_budget' budget.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                        <a href="{% url 'tracker:delete_budget' budget.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">No budgets recorded.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -99,4 +192,43 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    const data = {
+        labels: {{ pie_chart_data.labels|safe }},
+        datasets: [{
+            data: {{ pie_chart_data.values|safe }},
+            backgroundColor: {{ pie_chart_data.colors|safe }},
+            borderWidth: 1
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'pie',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: $${value.toFixed(2)} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

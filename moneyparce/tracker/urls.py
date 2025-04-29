@@ -11,4 +11,7 @@ urlpatterns = [
     path('new/', views.add_budget_view, name='add_budget'),
     path('example-budgets/', views.example_budgets_view, name='example_budgets'), # Ensure this exists if used
     path('manage-categories/', views.manage_categories_view, name='manage_categories'), # Add URL for managing categories
+    path('mark-notification-read/<int:notification_id>/', views.mark_notification_read, name='mark_notification_read'),
+    path('edit-budget/<int:budget_id>/', views.edit_budget_view, name='edit_budget'),
+    path('delete-budget/<int:budget_id>/', views.delete_budget_view, name='delete_budget'),
 ]

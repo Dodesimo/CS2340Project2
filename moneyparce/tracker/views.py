@@ -3,15 +3,16 @@ from django.db.models import Q # Import Q for complex lookups
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django import forms # Import forms module
-from .models import Transaction, TransactionSummary, Budget
+from .models import Transaction, TransactionSummary, Budget, SavingTip, BudgetNotification
 from .models import Transaction, TransactionSummary, Budget, Category # Add Category import
-from .forms import TransactionForm, BudgetForm, CategoryForm # Add CategoryForm import
+from .forms import TransactionForm, BudgetForm, CategoryForm, EditBudgetForm # Add CategoryForm and EditBudgetForm import
 from .utils import generate_daily_transaction_summary
 from datetime import datetime, timedelta
 from django.template.loader import get_template
 from django.http import HttpResponse
 from xhtml2pdf import pisa
 import io
+from django.db.models.functions import Random
 
 
 @login_required
@@ -34,6 +35,100 @@ def dashboard_view(request):
     
     all_transactions = Transaction.objects.filter(user=request.user).order_by('-date')
     
+    # Get a random saving tip
+    saving_tip = SavingTip.objects.order_by('?').first()
+    
+    # Check budgets and generate notifications
+    current_month = timezone.now().month
+    budgets = Budget.objects.filter(user=request.user, month=current_month)
+    budget_notifications = []
+    
+    for budget in budgets:
+        current_spending = budget.get_current_spending()
+        spending_percentage = budget.get_spending_percentage()
+        
+        # Check if budget is exceeded
+        if current_spending > budget.monthly_amount:
+            # Generate notification message with relevant saving tips
+            category_tips = SavingTip.objects.filter(
+                category__in=['Food', 'Shopping', 'Entertainment']  # Most relevant categories for overspending
+            ).order_by('?')[:2]  # Get 2 random relevant tips
+            
+            tip_messages = [f"💡 {tip.tip}" for tip in category_tips]
+            tips_text = "\n".join(tip_messages)
+            
+            message = (
+                f"⚠️ Budget Alert: You've exceeded your monthly budget of ${budget.monthly_amount} "
+                f"by ${current_spending - budget.monthly_amount:.2f} ({spending_percentage:.1f}% over budget).\n\n"
+                f"Here are some tips to help you get back on track:\n\n"
+                f"{tips_text}"
+            )
+            
+            # Create notification if it doesn't exist
+            notification, created = BudgetNotification.objects.get_or_create(
+                user=request.user,
+                budget=budget,
+                defaults={'message': message}
+            )
+            
+            if not notification.is_read:
+                budget_notifications.append(notification)
+        
+        # Check if approaching budget limit (75% threshold)
+        elif spending_percentage >= 75:
+            remaining_amount = budget.monthly_amount - current_spending
+            remaining_percentage = 100 - spending_percentage
+            
+            # Get relevant saving tips for proactive alerts
+            category_tips = SavingTip.objects.filter(
+                category__in=['Food', 'Shopping', 'Entertainment']
+            ).order_by('?')[:2]
+            
+            tip_messages = [f"💡 {tip.tip}" for tip in category_tips]
+            tips_text = "\n".join(tip_messages)
+            
+            message = (
+                f"⚠️ Budget Warning: You've spent {spending_percentage:.1f}% of your monthly budget "
+                f"(${current_spending:.2f} out of ${budget.monthly_amount}).\n\n"
+                f"You have ${remaining_amount:.2f} remaining ({remaining_percentage:.1f}% of your budget).\n\n"
+                f"Here are some tips to help you stay on track:\n\n"
+                f"{tips_text}"
+            )
+            
+            # Create notification if it doesn't exist
+            notification, created = BudgetNotification.objects.get_or_create(
+                user=request.user,
+                budget=budget,
+                defaults={'message': message}
+            )
+            
+            if not notification.is_read:
+                budget_notifications.append(notification)
+    
+    # Prepare category data for pie chart
+    category_data = {}
+    uncategorized_total = 0
+    
+    for transaction in all_transactions:
+        if transaction.category:
+            category_name = transaction.category.name
+            category_data[category_name] = category_data.get(category_name, 0) + float(transaction.amount)
+        else:
+            uncategorized_total += float(transaction.amount)
+    
+    if uncategorized_total > 0:
+        category_data['Other'] = uncategorized_total
+    
+    # Convert to format needed for Chart.js
+    pie_chart_data = {
+        'labels': list(category_data.keys()),
+        'values': list(category_data.values()),
+        'colors': [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+            '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+        ]  # Add more colors if needed
+    }
+    
     today_transactions = all_transactions.filter(date=today)
     
     summary, created = TransactionSummary.objects.get_or_create(
@@ -54,14 +149,15 @@ def dashboard_view(request):
 
     all_budgets = Budget.objects.filter(user=request.user).order_by('-month')
 
-
-
     context = {
         'transactions': all_transactions,
         'today_transactions': today_transactions,
         'today_summary': summary,
         'recent_summaries': recent_summaries,
         'budgets': all_budgets,
+        'pie_chart_data': pie_chart_data,
+        'saving_tip': saving_tip,  # Add saving tip to context
+        'budget_notifications': budget_notifications,  # Add notifications to context
     }
     
     return render(request, 'tracker/dashboard.html', context)
@@ -107,7 +203,7 @@ def manage_categories_view(request):
 @login_required
 def add_transaction_view(request):
     if request.method == 'POST':
-        form = TransactionForm(request.POST)
+        form = TransactionForm(request.POST, user=request.user)
         if form.is_valid():
             transaction = form.save(commit=False)
             transaction.user = request.user
@@ -131,7 +227,6 @@ def add_transaction_view(request):
             
             return redirect('/')
     else:
-        # Pass the user to the form's __init__ method
         form = TransactionForm(user=request.user)
     return render(request, 'tracker/add_transaction.html', {'form': form})
 
@@ -231,3 +326,34 @@ def example_budgets_view(request):
         'example_budgets': example_budgets
     }
     return render(request, 'tracker/example_budgets.html', context)
+
+@login_required
+def mark_notification_read(request, notification_id):
+    notification = get_object_or_404(BudgetNotification, id=notification_id, user=request.user)
+    notification.is_read = True
+    notification.save()
+    return redirect('tracker:dashboard')
+
+@login_required
+def edit_budget_view(request, budget_id):
+    budget = get_object_or_404(Budget, id=budget_id, user=request.user)
+    
+    if request.method == 'POST':
+        form = EditBudgetForm(request.POST, instance=budget)
+        if form.is_valid():
+            form.save()
+            return redirect('tracker:dashboard')
+    else:
+        form = EditBudgetForm(instance=budget)
+    
+    return render(request, 'tracker/edit_budget.html', {'form': form, 'budget': budget})
+
+@login_required
+def delete_budget_view(request, budget_id):
+    budget = get_object_or_404(Budget, id=budget_id, user=request.user)
+    
+    if request.method == 'POST':
+        budget.delete()
+        return redirect('tracker:dashboard')
+    
+    return render(request, 'tracker/delete_budget.html', {'budget': budget})
