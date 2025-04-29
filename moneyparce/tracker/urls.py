@@ -14,4 +14,7 @@ urlpatterns = [
     path('mark-notification-read/<int:notification_id>/', views.mark_notification_read, name='mark_notification_read'),
     path('edit-budget/<int:budget_id>/', views.edit_budget_view, name='edit_budget'),
     path('delete-budget/<int:budget_id>/', views.delete_budget_view, name='delete_budget'),
+    path('delete-transaction/<int:transaction_id>/', views.delete_transaction_view, name='delete_transaction'),
+    path('edit-transaction/<int:transaction_id>/', views.edit_transaction_view, name='edit_transaction'),
+    path('budget-notifications/', views.budget_notifications_view, name='budget_notifications'),
 ]

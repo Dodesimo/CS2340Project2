@@ -64,15 +64,16 @@ class Budget(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     monthly_amount = models.DecimalField(max_digits=10, decimal_places=2)
     month = models.DecimalField(max_digits=4, decimal_places=0)
+    year = models.DecimalField(max_digits=4, decimal_places=0, default=timezone.now().year)
 
     def __str__(self):
-        return f"{self.user.username}: {self.monthly_amount} for the month of {self.month}"
+        return f"{self.user.username}: {self.monthly_amount} for {self.month}/{self.year}"
 
     def get_current_spending(self):
         """Calculate total spending for the budget's month"""
         return Transaction.objects.filter(
             user=self.user,
-            date__year=timezone.now().year,
+            date__year=self.year,
             date__month=self.month
         ).aggregate(total=Sum('amount'))['total'] or 0
 
@@ -82,6 +83,10 @@ class Budget(models.Model):
         if self.monthly_amount > 0:
             return float((current_spending / self.monthly_amount) * 100)
         return 0.0
+
+    def get_remaining_amount(self):
+        """Calculate remaining budget amount"""
+        return float(self.monthly_amount) - float(self.get_current_spending())
 
 class BudgetNotification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

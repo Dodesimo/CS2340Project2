@@ -33,6 +33,8 @@ def add_budget_view(request):
 def dashboard_view(request):
     today = timezone.now().date()
     
+    # Get recent transactions (last 10)
+    recent_transactions = Transaction.objects.filter(user=request.user).order_by('-date')[:10]
     all_transactions = Transaction.objects.filter(user=request.user).order_by('-date')
     
     # Get a random saving tip
@@ -40,7 +42,8 @@ def dashboard_view(request):
     
     # Check budgets and generate notifications
     current_month = timezone.now().month
-    budgets = Budget.objects.filter(user=request.user, month=current_month)
+    current_year = timezone.now().year
+    budgets = Budget.objects.filter(user=request.user, month=current_month, year=current_year)
     budget_notifications = []
     
     for budget in budgets:
@@ -51,8 +54,8 @@ def dashboard_view(request):
         if current_spending > budget.monthly_amount:
             # Generate notification message with relevant saving tips
             category_tips = SavingTip.objects.filter(
-                category__in=['Food', 'Shopping', 'Entertainment']  # Most relevant categories for overspending
-            ).order_by('?')[:2]  # Get 2 random relevant tips
+                category__in=['Food', 'Shopping', 'Entertainment']
+            ).order_by('?')[:2]
             
             tip_messages = [f"💡 {tip.tip}" for tip in category_tips]
             tips_text = "\n".join(tip_messages)
@@ -122,11 +125,18 @@ def dashboard_view(request):
     # Convert to format needed for Chart.js
     pie_chart_data = {
         'labels': list(category_data.keys()),
-        'values': list(category_data.values()),
-        'colors': [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-            '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
-        ]  # Add more colors if needed
+        'data': list(category_data.values()),  # Changed from 'values' to 'data'
+    }
+    
+    # Prepare monthly spending data for bar chart
+    monthly_data = {}
+    for transaction in all_transactions:
+        month_key = transaction.date.strftime('%B %Y')
+        monthly_data[month_key] = monthly_data.get(month_key, 0) + float(transaction.amount)
+    
+    bar_chart_data = {
+        'labels': list(monthly_data.keys()),
+        'data': list(monthly_data.values()),
     }
     
     today_transactions = all_transactions.filter(date=today)
@@ -150,14 +160,16 @@ def dashboard_view(request):
     all_budgets = Budget.objects.filter(user=request.user).order_by('-month')
 
     context = {
+        'recent_transactions': recent_transactions,  # Add recent transactions to context
         'transactions': all_transactions,
         'today_transactions': today_transactions,
         'today_summary': summary,
         'recent_summaries': recent_summaries,
         'budgets': all_budgets,
         'pie_chart_data': pie_chart_data,
-        'saving_tip': saving_tip,  # Add saving tip to context
-        'budget_notifications': budget_notifications,  # Add notifications to context
+        'bar_chart_data': bar_chart_data,  # Add bar chart data
+        'saving_tip': saving_tip,
+        'budget_notifications': budget_notifications,
     }
     
     return render(request, 'tracker/dashboard.html', context)
@@ -357,3 +369,30 @@ def delete_budget_view(request, budget_id):
         return redirect('tracker:dashboard')
     
     return render(request, 'tracker/delete_budget.html', {'budget': budget})
+
+@login_required
+def delete_transaction_view(request, transaction_id):
+    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+
+    if request.method == 'POST':
+        transaction.delete()
+        return redirect('tracker:dashboard')
+
+    return render(request, 'tracker/delete_transaction.html', {'transaction': transaction})
+
+@login_required
+def edit_transaction_view(request, transaction_id):
+    transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
+    if request.method == 'POST':
+        form = TransactionForm(request.POST, instance=transaction)
+        if form.is_valid():
+            form.save()
+            return redirect('tracker:dashboard')
+    else:
+        form = TransactionForm(instance=transaction)
+    return render(request, 'tracker/edit_transaction.html', {'form': form, 'transaction': transaction})
+
+@login_required
+def budget_notifications_view(request):
+    notifications = BudgetNotification.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'tracker/budget_notifications.html', {'notifications': notifications})

@@ -12,12 +12,17 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+import dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env file located in the parent directory (moneyparce/)
+dotenv_path = BASE_DIR.parent / '.env'
+dotenv.load_dotenv(dotenv_path=dotenv_path)
+
 # Gemini API Key
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'your-api-key-here')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 
 # Quick-start development settings - unsuitable for production
@@ -45,6 +50,7 @@ INSTALLED_APPS = [
     "tracker",
     "accounts",
     "chatbot",
+    "widget_tweaks"
 ]
 
 MIDDLEWARE = [
