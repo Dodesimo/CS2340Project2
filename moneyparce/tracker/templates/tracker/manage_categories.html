@@ -1,31 +1,54 @@
 {% extends 'tracker/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Manage Categories - Money Parce{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2>Manage Categories</h2>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-light border-bottom">
+                <h3 class="h5 mb-0">Your Categories</h3>
+            </div>
+            <div class="card-body">
+                {% if categories %}
+                    <ul class="list-group list-group-flush">
+                        {% for category in categories %}
+                            <li class="list-group-item">{{ category.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">You haven't added any categories yet.</p>
+                {% endif %}
+            </div>
+        </div>
 
-    <div class="category-list">
-        <h3>Your Categories</h3>
-        {% if categories %}
-            <ul>
-                {% for category in categories %}
-                    <li>{{ category.name }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>You haven't added any categories yet.</p>
-        {% endif %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                 <h3 class="h5 mb-0">Add New Category</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% render_field field class="form-control" placeholder=field.label %}
+                            {% if field.help_text %}
+                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'tracker:dashboard' %}" class="btn btn-outline-secondary me-md-2">Back to Dashboard</a>
+                        <button type="submit" class="btn btn-warning">Add Category</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-
-    <div class="form-container add-category-form">
-        <h3>Add New Category</h3>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit">Add Category</button>
-        </form>
-    </div>
-
-    <a href="{% url 'tracker:dashboard' %}">Back to Dashboard</a>
 </div>
 {% endblock %}

@@ -1,267 +1,230 @@
 {% extends 'tracker/base.html' %}
-{% block title %}Dashboard - Money Parce{% endblock %}
+
+{% block title %}AI Chatbot - Money Parce{% endblock %}
 
 {% block content %}
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0 auto;
+<style>
+    /* Custom styles for chat */
+    .chat-container {
+        height: 65vh; /* Adjust height as needed */
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: #ffffff; /* White background for chat area */
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem; /* Match Bootstrap's border-radius */
+        margin-bottom: 1rem;
+    }
+    .message {
+        padding: 0.75rem 1.25rem;
+        margin-bottom: 1rem;
+        border-radius: 1.25rem; /* More rounded corners */
+        max-width: 80%;
+        word-wrap: break-word;
+        line-height: 1.5;
+        position: relative;
+    }
+    .user-message {
+        background-color: #0d6efd; /* Bootstrap primary blue */
+        color: white;
+        margin-left: auto;
+        margin-right: 0.5rem;
+    }
+    .ai-message {
+        background-color: #e9ecef; /* Light gray for AI */
+        color: #212529;
+        margin-right: auto;
+        margin-left: 0.5rem;
+    }
+    .typing-indicator {
+        text-align: center;
+        padding: 0.5rem;
+        color: #6c757d; /* Bootstrap secondary text color */
+        font-style: italic;
+    }
+    .error-message {
+        /* Using Bootstrap alert styles */
+    }
+    pre {
+        background-color: #f1f3f4; /* Slightly darker than AI message bg */
+        padding: 1rem;
+        border-radius: 0.25rem;
+        overflow-x: auto;
+        font-size: 0.875em; /* Smaller font size for code */
+        border: 1px solid #dee2e6;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    code:not(pre > code) {
+        background-color: #e9ecef;
+        padding: 0.2em 0.4em;
+        border-radius: 0.25rem;
+        font-size: 0.875em;
+    }
+</style>
 
-            background-color: #f7f9fc;
-            color: #333;
-            line-height: 1.6;
-        }
-        .chat-container {
-            height: 500px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 20px;
-            overflow-y: auto;
-            margin-bottom: 20px;
-            background-color: #fff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .message {
-            padding: 12px 18px;
-            margin-bottom: 15px;
-            border-radius: 20px;
-            max-width: 75%;
-            word-wrap: break-word;
-            position: relative;
-            font-size: 15px;
-        }
-        .user-message {
-            background-color: #4285f4;
-            color: white;
-            margin-left: auto;
-            margin-right: 10px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
-        }
-        .ai-message {
-            background-color: #f1f3f4;
-            color: #202124;
-            margin-right: auto;
-            margin-left: 10px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
-        }
-        .input-container {
-            display: flex;
-            margin-top: 15px;
-        }
-        #message-input {
-            flex-grow: 1;
-            padding: 14px 20px;
-            border: 1px solid #ddd;
-            border-radius: 30px;
-            margin-right: 10px;
-            outline: none;
-            font-size: 15px;
-            transition: border 0.3s ease;
-        }
-        #message-input:focus {
-            border-color: #4285f4;
-            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-        }
-        button {
-            padding: 12px 24px;
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 15px;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #3367d6;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        h1 {
-            color: #4285f4;
-            margin: 0;
-            font-size: 28px;
-        }
-        .typing-indicator {
-            color: #666;
-            font-style: italic;
-            margin-top: 10px;
-            display: none;
-            padding-left: 20px;
-        }
-        pre {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            border-left: 3px solid #4285f4;
-            margin: 10px 0;
-        }
-        code {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: #f1f3f4;
-            padding: 2px 5px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .error-message {
-            background-color: #fdeded;
-            color: #b71c1c;
-            padding: 12px 18px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-left: 4px solid #d32f2f;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>MoneyParce Chatbot</h1>
-        <a href="{% url 'chatbot:new_conversation' %}"><button>New Conversation</button></a>
-    </div>
-
-    <div class="chat-container" id="chat-container">
-        {% for message in messages %}
-            <div class="message {% if message.is_user %}user-message{% else %}ai-message{% endif %}">
-                {{ message.content|linebreaks }}
-            </div>
-        {% endfor %}
-    </div>
-
-    <form id="chat-form">
-        {% csrf_token %}
-        <div class="input-container">
-            <input type="text" id="message-input" placeholder="Type your message..." required autofocus>
-            <button type="submit">Send</button>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4">Chat with Money Parce AI</h2>
+        <div>
+            <a href="{% url 'chatbot:new_conversation' %}" class="btn btn-sm btn-outline-info me-2">New Conversation</a>
+            <a href="{% url 'tracker:dashboard' %}" class="btn btn-sm btn-outline-secondary">Back to Dashboard</a>
         </div>
-    </form>
-    <div class="typing-indicator" id="typing-indicator">Gemini is thinking...</div>
-    <a href="{% url 'tracker:dashboard' %}">Back to Dashboard</a>
+    </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const chatContainer = document.getElementById('chat-container');
-            const chatForm = document.getElementById('chat-form');
-            const messageInput = document.getElementById('message-input');
-            const typingIndicator = document.getElementById('typing-indicator');
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-2 p-md-3">
+            <div id="chat-container" class="chat-container">
+                {% for message in messages %}
+                    <div class="message {% if message.is_user %}user-message{% else %}ai-message{% endif %}">
+                        {# Apply formatting via JS now #}
+                    </div>
+                {% endfor %}
+            </div>
 
-            // Scroll to bottom of chat
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            <div id="typing-indicator" class="typing-indicator" style="display: none;">
+                <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                Gemini is thinking...
+            </div>
 
-            // Function to safely escape HTML
-            function escapeHtml(unsafe) {
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
-            }
+            <div id="error-container"></div> {# Container for error messages #}
 
-            // Function to format message with code blocks
-            function formatMessage(text) {
-                // Replace ```code``` blocks with proper HTML
-                let formatted = text.replace(/```([\s\S]*?)```/g, function(match, code) {
-                    return '<pre><code>' + escapeHtml(code) + '</code></pre>';
-                });
+            <form id="chat-form">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="text" id="message-input" class="form-control" placeholder="Ask about your finances..." required autofocus aria-label="Chat message input" aria-describedby="send-button">
+                    <button class="btn btn-primary" type="submit" id="send-button">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-                // Replace inline `code` with proper HTML
-                formatted = formatted.replace(/`([^`]+)`/g, function(match, code) {
-                    return '<code>' + escapeHtml(code) + '</code>';
-                });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const sendButton = document.getElementById('send-button');
+        const errorContainer = document.getElementById('error-container');
+        const initialMessages = {{ messages_json|safe }};
 
-                // Replace newlines with <br> tags outside of pre blocks
-                let parts = formatted.split(/<pre>|<\/pre>/);
-                for (let i = 0; i < parts.length; i++) {
-                    if (i % 2 === 0) { // Outside <pre> tags
-                        parts[i] = parts[i].replace(/\n/g, '<br>');
-                    }
+        // Function to safely escape HTML
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Function to format message with code blocks and basic markdown
+        function formatMessageContent(text) {
+            let escapedText = escapeHtml(text);
+            // Replace ```code``` blocks with <pre><code>
+            let formatted = escapedText.replace(/```([\s\S]*?)```/g, function(match, code) {
+                return '<pre><code>' + code + '</code></pre>'; // Already escaped
+            });
+            // Replace inline `code`
+            formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>'); // Already escaped
+            // Replace **bold**
+            formatted = formatted.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+            // Replace *italic*
+            formatted = formatted.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+            // Replace newlines with <br> outside of pre blocks
+            let parts = formatted.split(/(<pre><code>[\s\S]*?<\/code><\/pre>)/);
+            let finalHtml = '';
+            for (let i = 0; i < parts.length; i++) {
+                if (i % 2 === 0) { // Text outside <pre>
+                    finalHtml += parts[i].replace(/\n/g, '<br>');
+                } else { // Code inside <pre>
+                    finalHtml += parts[i];
                 }
-                let formattedMessage = '';
-                for (let i = 0; i < parts.length; i++) {
-                    formattedMessage += (i % 2 === 0) ? parts[i] : `<pre>${parts[i]}</pre>`;
-                }
-                return formattedMessage;
-
             }
+            return finalHtml;
+        }
 
-            chatForm.addEventListener('submit', function(e) {
-                e.preventDefault();
+        // Function to add a message to the chat display
+        function addMessageToChat(sender, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
+            messageDiv.innerHTML = formatMessageContent(content);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+        }
 
-                const message = messageInput.value.trim();
-                if (!message) return;
+        // Function to display error messages using Bootstrap alerts
+        function displayError(message) {
+            errorContainer.innerHTML = ''; // Clear previous errors
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+            errorDiv.setAttribute('role', 'alert');
+            errorDiv.innerHTML = `
+                ${escapeHtml(message)}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            errorContainer.appendChild(errorDiv);
+        }
 
-                // Display user message
-                const userMessageDiv = document.createElement('div');
-                userMessageDiv.className = 'message user-message';
-                userMessageDiv.textContent = message;
-                chatContainer.appendChild(userMessageDiv);
+        // Load initial messages
+        initialMessages.forEach(msg => {
+            addMessageToChat(msg.is_user ? 'user' : 'ai', msg.content);
+        });
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll after loading initial
 
-                // Clear input
-                messageInput.value = '';
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+        // Handle form submission
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const messageText = messageInput.value.trim();
+            if (!messageText) return;
 
-                // Show typing indicator
-                typingIndicator.style.display = 'block';
+            addMessageToChat('user', messageText);
+            messageInput.value = ''; // Clear input
+            messageInput.focus();
+            typingIndicator.style.display = 'flex'; // Show typing indicator
+            sendButton.disabled = true; // Disable send button
+            errorContainer.innerHTML = ''; // Clear errors on new message
 
-                // Send message to server
-                fetch('/chatbot/chat/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: new URLSearchParams({
-                        'message': message
-                    })
-                }).then(response => {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            throw new Error(text || `HTTP error! status: ${response.status}`);
-                        });
-                    }
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        return response.text().then(text => {
-                            throw new Error('Expected JSON, got: ' + text);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Hide typing indicator
-                    typingIndicator.style.display = 'none';
-
-                    // Display AI response
-                    const aiMessageDiv = document.createElement('div');
-                    aiMessageDiv.className = 'message ai-message';
-
-                    // Format the response with code blocks and line breaks
-                    aiMessageDiv.innerHTML = formatMessage(data.response);
-
-                    chatContainer.appendChild(aiMessageDiv);
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    typingIndicator.style.display = 'none';
-
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'message error-message';
-                    errorDiv.innerHTML = 'Error: ' + error.message;
-                    chatContainer.appendChild(errorDiv);
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                });
+            // Send message to server
+            fetch("{% url 'chatbot:chat' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json', // Send as JSON
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ 'message': messageText })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Try to parse error from JSON, fallback to status text
+                    return response.json().then(err => {
+                        throw new Error(err.error || `Server error: ${response.status}`);
+                    }).catch(() => {
+                        throw new Error(`Network error: ${response.statusText}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.response) {
+                    addMessageToChat('ai', data.response);
+                } else {
+                    throw new Error('Received an empty response from the AI.');
+                }
+            })
+            .catch(error => {
+                console.error('Chat Error:', error);
+                displayError(`Sorry, an error occurred: ${error.message}`);
+            })
+            .finally(() => {
+                typingIndicator.style.display = 'none'; // Hide typing indicator
+                sendButton.disabled = false; // Re-enable send button
             });
         });
-    </script>
-{%  endblock %}
+    });
+</script>
+{% endblock %}

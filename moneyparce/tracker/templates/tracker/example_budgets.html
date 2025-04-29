@@ -4,44 +4,44 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Example Budgets</h2>
-    <p>Here are a few common budget structures to help you get started or refine your own budget.</p>
-    <hr>
-
-    {% for budget in example_budgets %}
-    <div class="card mb-4">
-        <div class="card-header">
-            <h3>{{ budget.name }}</h3>
-        </div>
-        <div class="card-body">
-            <p class="card-text">{{ budget.description }}</p>
-            <h5>Categories & Allocations:</h5>
-            <ul class="list-group list-group-flush">
-                {% for category in budget.categories %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>
-                        {{ category.name }}
-                        {% if category.details %}
-                            <small class="text-muted d-block">{{ category.details }}</small>
-                        {% endif %}
-                    </span>
-                    <span class="badge bg-primary rounded-pill">${{ category.amount|floatformat:2 }}</span>
-                </li>
-                {% endfor %}
-                <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
-                    <span>Total</span>
-                    <span>${{ budget.total|floatformat:2 }}</span>
-                </li>
-            </ul>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4">Example Budgets</h2>
+        <a href="{% url 'tracker:dashboard' %}" class="btn btn-sm btn-outline-secondary">Back to Dashboard</a>
     </div>
-    {% empty %}
-    <p>No example budgets available at the moment.</p>
-    {% endfor %}
+    <p class="lead mb-4">Here are a few common budget structures to help you get started or refine your own budget.</p>
 
-    <div class="mt-4">
-        <a href="{% url 'tracker:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
-        <a href="{% url 'tracker:add_budget' %}" class="btn btn-success">Create Your Own Budget</a>
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+        {% for budget in example_budgets %}
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-info text-dark">
+                    <h3 class="h5 mb-0">{{ budget.name }}</h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text mb-3">{{ budget.description }}</p>
+                    <h6 class="card-subtitle mb-2 text-muted">Categories & Allocations:</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for category in budget.categories %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <span>
+                                {{ category.name }}
+                                {% if category.details %}
+                                    <small class="text-muted d-block">{{ category.details }}</small>
+                                {% endif %}
+                            </span>
+                            <span class="badge bg-primary rounded-pill">${{ category.amount|floatformat:2 }}</span>
+                        </li>
+                        {% endfor %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 pt-2 fw-bold">
+                            <span>Total</span>
+                            <span>${{ budget.total|floatformat:2 }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
+
 </div>
 {% endblock %}

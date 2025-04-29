@@ -3,26 +3,25 @@
 {% block title %}Delete Budget - Money Parce{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-6 offset-md-3">
-            <div class="card">
-                <div class="card-header bg-danger text-white">
-                    <h3 class="mb-0">Delete Budget</h3>
-                </div>
-                <div class="card-body">
-                    <p>Are you sure you want to delete the budget for {{ budget.month }}?</p>
-                    <p>Monthly Amount: ${{ budget.monthly_amount }}</p>
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="d-flex justify-content-between">
-                            <button type="submit" class="btn btn-danger">Delete Budget</button>
-                            <a href="{% url 'tracker:dashboard' %}" class="btn btn-secondary">Cancel</a>
-                        </div>
-                    </form>
-                </div>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <h3 class="h5 mb-0">Confirm Budget Deletion</h3>
+            </div>
+            <div class="card-body">
+                <p class="lead">Are you sure you want to delete the budget for <strong>{{ budget.month|date:"F Y" }}</strong>?</p>
+                <p>This budget has a monthly amount of <strong>${{ budget.monthly_amount|floatformat:2 }}</strong>.</p>
+                <p class="text-danger"><small>This action cannot be undone.</small></p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'tracker:dashboard' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-danger">Yes, Delete Budget</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

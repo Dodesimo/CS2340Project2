@@ -1,34 +1,44 @@
 {% extends 'tracker/base.html' %}
+{% load widget_tweaks %}
 
 {% block title %}Edit Budget - Money Parce{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-6 offset-md-3">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Edit Budget</h3>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h3 class="h5 mb-0">Edit Budget for {{ form.instance.month|date:"F Y" }}</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% for field in form %}
                         <div class="mb-3">
-                            <label for="id_month" class="form-label">Month</label>
-                            {{ form.month }}
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {% if field.name == 'month' %}
+                                {% render_field field class="form-control" type="month" readonly %}
+                                <small class="form-text text-muted">Month cannot be changed after creation.</small>
+                            {% else %}
+                                {% render_field field class="form-control" placeholder=field.label %}
+                            {% endif %}
+                            {% if field.help_text and field.name != 'month' %}
+                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
                         </div>
-                        <div class="mb-3">
-                            <label for="id_monthly_amount" class="form-label">Monthly Amount</label>
-                            {{ form.monthly_amount }}
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                            <a href="{% url 'tracker:dashboard' %}" class="btn btn-secondary">Cancel</a>
-                        </div>
-                    </form>
-                </div>
+                    {% endfor %}
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'tracker:dashboard' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}
