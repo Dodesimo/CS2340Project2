@@ -3,15 +3,19 @@ import google.generativeai as genai
 from datetime import datetime
 from django.conf import settings
 from dotenv import load_dotenv
+import logging
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-if not GEMINI_API_KEY:
-    print("Warning: GEMINI_API_KEY not found in environment variables")
-    GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
-
-genai.configure(api_key=GEMINI_API_KEY)
+try:
+    if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == 'your-api-key-here':
+        raise ValueError("Gemini API key not properly configured")
+    genai.configure(api_key=settings.GEMINI_API_KEY)
+    model = genai.GenerativeModel('gemini-pro')
+    logger.info("Gemini API initialized successfully")
+except Exception as e:
+    logger.error(f"Error initializing Gemini API: {str(e)}")
+    model = None
 
 def generate_daily_transaction_summary(transactions, date):
     if not transactions:

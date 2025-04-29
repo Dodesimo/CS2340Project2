@@ -66,9 +66,19 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="h4">Chat with Money Parce AI</h2>
         <div>
-            <a href="{% url 'chatbot:new_conversation' %}" class="btn btn-sm btn-outline-info me-2">New Conversation</a>
+            <button id="new-conversation-btn" class="btn btn-sm btn-outline-info me-2">New Conversation</button>
             <a href="{% url 'tracker:dashboard' %}" class="btn btn-sm btn-outline-secondary">Back to Dashboard</a>
         </div>
+    </div>
+
+    <!-- Chat Mode Selection -->
+    <div class="mb-3">
+        <label for="chat-mode-select" class="form-label">Select Chat Mode:</label>
+        <select class="form-select form-select-sm" id="chat-mode-select" aria-label="Select chat mode">
+            <option value="general" selected>General Questions</option>
+            <option value="financial_advice">Financial Advice</option>
+            <option value="budget_tutorial">Budgeting Tutorial</option>
+        </select>
     </div>
 
     <div class="card border-0 shadow-sm">
@@ -176,6 +186,37 @@
         });
         chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll after loading initial
 
+        // Handle New Conversation button click
+        const newConversationBtn = document.getElementById('new-conversation-btn');
+        if (newConversationBtn) {
+            newConversationBtn.addEventListener('click', function() {
+                // Clear chat container
+                chatContainer.innerHTML = '';
+                // Optionally, send a request to the backend to clear server-side state if needed
+                fetch("{% url 'chatbot:new_conversation' %}", {
+                    method: 'POST', // Or GET, depending on your backend implementation
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        console.log('New conversation started.');
+                        // Add a starting message if desired
+                        addMessageToChat('ai', 'New conversation started. How can I help you today?');
+                    } else {
+                        console.error('Failed to start new conversation on server.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting new conversation:', error);
+                    displayError('Could not start a new conversation. Please try again.');
+                });
+                messageInput.focus(); // Focus input after clearing
+            });
+        }
+
         // Handle form submission
         chatForm.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -190,13 +231,18 @@
             errorContainer.innerHTML = ''; // Clear errors on new message
 
             // Send message to server
+            const selectedMode = document.getElementById('chat-mode-select').value;
+
             fetch("{% url 'chatbot:chat' %}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json', // Send as JSON
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
-                body: JSON.stringify({ 'message': messageText })
+                body: JSON.stringify({ 
+                    'message': messageText,
+                    'mode': selectedMode // Include the selected mode
+                 })
             })
             .then(response => {
                 if (!response.ok) {

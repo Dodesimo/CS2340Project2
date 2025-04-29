@@ -20,10 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from .env file located in the parent directory (moneyparce/)
 dotenv_path = BASE_DIR.parent / '.env'
 dotenv.load_dotenv(dotenv_path=dotenv_path)
+dotenv.load_dotenv()
 
 # Gemini API Key
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/

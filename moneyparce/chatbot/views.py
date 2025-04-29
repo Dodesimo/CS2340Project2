@@ -23,23 +23,43 @@ def index(request):
     """Render the main chat interface."""
     return render(request, 'chatbot/index.html')
 
+import json # Add json import
+
 @require_http_methods(["POST"])
 def chat(request):
-    """Handle chat messages and return AI responses."""
+    """Handle chat messages and return AI responses based on mode."""
     if model is None:
         return JsonResponse({
-            'error': 'Chatbot service is currently unavailable. Please try again later.'
+            'error': 'Chatbot service is currently unavailable. Please configure the API key.'
         }, status=503)
-    
+
     try:
-        message = request.POST.get('message', '')
+        # Parse JSON data from request body
+        data = json.loads(request.body)
+        message = data.get('message', '')
+        mode = data.get('mode', 'general') # Default to general chat
+
         if not message:
             return JsonResponse({'error': 'No message provided'}, status=400)
-            
-        response = model.generate_content(message)
+
+        # Construct prompt based on mode
+        if mode == 'financial_advice':
+            prompt = f"Provide financial advice based on the following user query: '{message}'. Focus on actionable steps and general financial principles. Do not give specific investment recommendations."
+        elif mode == 'budget_tutorial':
+            prompt = f"Act as a budgeting tutor. Explain the concept or answer the question related to budgeting based on the user's query: '{message}'. Keep the explanation clear and simple."
+        else: # General mode
+            prompt = message
+
+        logger.info(f"Sending prompt to Gemini (mode: {mode}): {prompt[:100]}...") # Log prompt
+        response = model.generate_content(prompt)
+        logger.info(f"Received response from Gemini: {response.text[:100]}...") # Log response
+
         return JsonResponse({'response': response.text})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON format in request body'}, status=400)
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}")
+        logger.error(f"Error in chat endpoint (mode: {mode}): {str(e)}")
         return JsonResponse({
             'error': 'An error occurred while processing your request. Please try again later.'
         }, status=500)
@@ -72,4 +92,4 @@ def debug(request):
         'status': 'debug endpoint',
         'api_key_configured': bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != 'your-api-key-here'),
         'model_initialized': model is not None
-    }) 
+    })
