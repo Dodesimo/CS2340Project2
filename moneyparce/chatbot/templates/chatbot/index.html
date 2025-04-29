@@ -202,9 +202,9 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        console.log('New conversation started.');
+                        console.log('New conversation started. How can I help you today?');
                         // Add a starting message if desired
-                        addMessageToChat('ai', 'New conversation started. How can I help you today?');
+                        addMessageToChat('ai', getInitialAgentMessage(document.getElementById('chat-mode-select').value));
                     } else {
                         console.error('Failed to start new conversation on server.');
                     }
@@ -215,6 +215,47 @@
                 });
                 messageInput.focus(); // Focus input after clearing
             });
+        }
+
+        // Handle mode switching
+        const chatModeSelect = document.getElementById('chat-mode-select');
+        if (chatModeSelect) {
+            chatModeSelect.addEventListener('change', function() {
+                // Clear chat container
+                chatContainer.innerHTML = '';
+                // Start a new conversation on the backend
+                fetch("{% url 'chatbot:new_conversation' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Add the initial agent message for the selected mode
+                        addMessageToChat('ai', getInitialAgentMessage(chatModeSelect.value));
+                    } else {
+                        console.error('Failed to start new conversation on server.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting new conversation:', error);
+                    displayError('Could not start a new conversation. Please try again.');
+                });
+                messageInput.focus();
+            });
+        }
+
+        // Helper function to get the initial agent message for each mode
+        function getInitialAgentMessage(mode) {
+            if (mode === 'financial_advice') {
+                return 'What financial advice do you seek?';
+            } else if (mode === 'budget_tutorial') {
+                return 'How can I provide you a tutorial on budgeting?';
+            } else {
+                return 'How can I help you?';
+            }
         }
 
         // Handle form submission

@@ -220,7 +220,7 @@ def add_transaction_view(request):
             transaction = form.save(commit=False)
             transaction.user = request.user
             transaction.save()
-            
+            # --- Update daily summary and budget notifications after transaction add ---
             today = timezone.now().date()
             if transaction.date == today:
                 summary, created = TransactionSummary.objects.get_or_create(
@@ -228,7 +228,6 @@ def add_transaction_view(request):
                     date=today,
                     defaults={'summary_text': 'Generating summary...'}
                 )
-                
                 today_transactions = Transaction.objects.filter(
                     user=request.user,
                     date=today
@@ -236,7 +235,32 @@ def add_transaction_view(request):
                 summary_text = generate_daily_transaction_summary(today_transactions, today)
                 summary.summary_text = summary_text
                 summary.save()
-            
+            # --- Update budget notifications ---
+            # Recalculate budget notifications for current month/year
+            current_month = today.month
+            current_year = today.year
+            budgets = Budget.objects.filter(user=request.user, month=current_month, year=current_year)
+            for budget in budgets:
+                current_spending = budget.get_current_spending()
+                spending_percentage = budget.get_spending_percentage()
+                # Exceeded budget
+                if current_spending > budget.monthly_amount:
+                    BudgetNotification.objects.get_or_create(
+                        budget=budget,
+                        defaults={
+                            'message': f"⚠️ Budget Alert: You've exceeded your monthly budget of ${budget.monthly_amount} by ${current_spending - budget.monthly_amount:.2f} ({spending_percentage:.1f}% over budget)."
+                        }
+                    )
+                # Approaching budget (75% threshold)
+                elif spending_percentage >= 75:
+                    remaining_amount = budget.monthly_amount - current_spending
+                    remaining_percentage = 100 - spending_percentage
+                    BudgetNotification.objects.get_or_create(
+                        budget=budget,
+                        defaults={
+                            'message': f"⚠️ Budget Warning: You've spent {spending_percentage:.1f}% of your monthly budget (${current_spending:.2f} out of ${budget.monthly_amount}). You have ${remaining_amount:.2f} remaining ({remaining_percentage:.1f}% of your budget)."
+                        }
+                    )
             return redirect('/')
     else:
         form = TransactionForm(user=request.user)
@@ -373,11 +397,45 @@ def delete_budget_view(request, budget_id):
 @login_required
 def delete_transaction_view(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id, user=request.user)
-
     if request.method == 'POST':
+        transaction_date = transaction.date
         transaction.delete()
+        # --- Update daily summary and budget notifications after transaction delete ---
+        today = timezone.now().date()
+        if transaction_date == today:
+            today_transactions = Transaction.objects.filter(user=request.user, date=today)
+            summary, created = TransactionSummary.objects.get_or_create(
+                user=request.user,
+                date=today,
+                defaults={'summary_text': 'Generating summary...'}
+            )
+            summary_text = generate_daily_transaction_summary(today_transactions, today)
+            summary.summary_text = summary_text
+            summary.save()
+        # --- Update budget notifications ---
+        current_month = today.month
+        current_year = today.year
+        budgets = Budget.objects.filter(user=request.user, month=current_month, year=current_year)
+        for budget in budgets:
+            current_spending = budget.get_current_spending()
+            spending_percentage = budget.get_spending_percentage()
+            if current_spending > budget.monthly_amount:
+                BudgetNotification.objects.get_or_create(
+                    budget=budget,
+                    defaults={
+                        'message': f"⚠️ Budget Alert: You've exceeded your monthly budget of ${budget.monthly_amount} by ${current_spending - budget.monthly_amount:.2f} ({spending_percentage:.1f}% over budget)."
+                    }
+                )
+            elif spending_percentage >= 75:
+                remaining_amount = budget.monthly_amount - current_spending
+                remaining_percentage = 100 - spending_percentage
+                BudgetNotification.objects.get_or_create(
+                    budget=budget,
+                    defaults={
+                        'message': f"⚠️ Budget Warning: You've spent {spending_percentage:.1f}% of your monthly budget (${current_spending:.2f} out of ${budget.monthly_amount}). You have ${remaining_amount:.2f} remaining ({remaining_percentage:.1f}% of your budget)."
+                    }
+                )
         return redirect('tracker:dashboard')
-
     return render(request, 'tracker/delete_transaction.html', {'transaction': transaction})
 
 @login_required
@@ -387,6 +445,41 @@ def edit_transaction_view(request, transaction_id):
         form = TransactionForm(request.POST, instance=transaction)
         if form.is_valid():
             form.save()
+            # --- Update daily summary and budget notifications after transaction edit ---
+            today = timezone.now().date()
+            if transaction.date == today:
+                today_transactions = Transaction.objects.filter(user=request.user, date=today)
+                summary, created = TransactionSummary.objects.get_or_create(
+                    user=request.user,
+                    date=today,
+                    defaults={'summary_text': 'Generating summary...'}
+                )
+                summary_text = generate_daily_transaction_summary(today_transactions, today)
+                summary.summary_text = summary_text
+                summary.save()
+            # --- Update budget notifications ---
+            current_month = today.month
+            current_year = today.year
+            budgets = Budget.objects.filter(user=request.user, month=current_month, year=current_year)
+            for budget in budgets:
+                current_spending = budget.get_current_spending()
+                spending_percentage = budget.get_spending_percentage()
+                if current_spending > budget.monthly_amount:
+                    BudgetNotification.objects.get_or_create(
+                        budget=budget,
+                        defaults={
+                            'message': f"⚠️ Budget Alert: You've exceeded your monthly budget of ${budget.monthly_amount} by ${current_spending - budget.monthly_amount:.2f} ({spending_percentage:.1f}% over budget)."
+                        }
+                    )
+                elif spending_percentage >= 75:
+                    remaining_amount = budget.monthly_amount - current_spending
+                    remaining_percentage = 100 - spending_percentage
+                    BudgetNotification.objects.get_or_create(
+                        budget=budget,
+                        defaults={
+                            'message': f"⚠️ Budget Warning: You've spent {spending_percentage:.1f}% of your monthly budget (${current_spending:.2f} out of ${budget.monthly_amount}). You have ${remaining_amount:.2f} remaining ({remaining_percentage:.1f}% of your budget)."
+                        }
+                    )
             return redirect('tracker:dashboard')
     else:
         form = TransactionForm(instance=transaction)

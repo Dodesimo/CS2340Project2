@@ -13,7 +13,7 @@ try:
     if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == 'your-api-key-here':
         raise ValueError("Gemini API key not properly configured")
     genai.configure(api_key=settings.GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.5-pro')
     logger.info("Gemini API initialized successfully")
 except Exception as e:
     logger.error(f"Error initializing Gemini API: {str(e)}")
@@ -21,7 +21,14 @@ except Exception as e:
 
 def index(request):
     """Render the main chat interface."""
-    return render(request, 'chatbot/index.html')
+    # Retrieve chat history from session or initialize if not present
+    messages = request.session.get('chat_messages', [])
+    import json
+    messages_json = json.dumps(messages)
+    return render(request, 'chatbot/index.html', {
+        'messages': messages,
+        'messages_json': messages_json
+    })
 
 import json # Add json import
 
@@ -54,6 +61,16 @@ def chat(request):
         response = model.generate_content(prompt)
         logger.info(f"Received response from Gemini: {response.text[:100]}...") # Log response
 
+        # Retrieve chat history from session or initialize
+        messages = request.session.get('chat_messages', [])
+        # Append user message
+        messages.append({'is_user': True, 'content': message})
+        # Append AI response
+        messages.append({'is_user': False, 'content': response.text})
+        # Save back to session
+        request.session['chat_messages'] = messages
+        request.session.modified = True
+
         return JsonResponse({'response': response.text})
 
     except json.JSONDecodeError:
@@ -66,6 +83,9 @@ def chat(request):
 
 def new_conversation(request):
     """Start a new conversation."""
+    # Clear chat history in session
+    request.session['chat_messages'] = []
+    request.session.modified = True
     return JsonResponse({'status': 'success'})
 
 def test_gemini(request):
